@@ -1,0 +1,109 @@
+-- Definindo a camada padrão
+defaultLayer = LayerManager.getLayerFromName "0"
+
+-- Função para criar uma camada
+fn createLayer layerName =
+(
+    local newLayer = LayerManager.getLayerFromName layerName
+    if newLayer == undefined do
+    (
+        newLayer = LayerManager.createLayer()
+        newLayer.name = layerName
+    )
+    newLayer
+)
+
+-- Criando a camada "Tablado e Piso"
+tabladoEPisoLayer = createLayer "Tablado e Piso"
+
+rollout createStandRollout "AutoStand 3D" width:200
+(
+    group "Dimensões:"
+    (
+        spinner spnWidth "Largura(m):" type:#float range:[0, 1e30, 1]
+        spinner spnLength "Comprimento (m):" type:#float range:[0, 1e30, 1]
+    )
+
+    checkbox chkTablado "Tablado"
+
+    -- Nova sessão "Tipo de Piso"
+    group "Tipo de Piso:"
+    (
+        radiobuttons radioFloorType labels:#("MDF", "Carpete", "Vinílico") columns:3
+    )
+
+    -- Checkbox para Cantoneiras
+    checkbox chkCantoneiras "Cantoneiras" enabled:false
+
+    button btnCriar "Criar Stand" width:150 height:30 align:#center
+    on btnCriar pressed do
+    (
+        local width = spnWidth.value * 100.0 -- Converte de metros para centímetros
+        local length = spnLength.value * 100.0 -- Converte de metros para centímetros
+
+        -- Verifica se "Tablado" está marcado
+        if chkTablado.checked then
+        (
+            -- Cria um box com as dimensões especificadas e height de 9
+            local tabladoBox = box length:width width:length height:9 isSelected:on
+            tabladoBox.position.z = -10 -- Define a posição no eixo Z como -1
+            tabladoBox.layer = tabladoEPisoLayer -- Adiciona à camada "Tablado e Piso"
+        )
+        else
+        (
+            -- Cria um box com as dimensões especificadas e height de 1
+            local standBox = box length:width width:length height:1 isSelected:on
+            standBox.position.z = -1 -- Define a posição no eixo Z como -1
+            standBox.layer = tabladoEPisoLayer -- Adiciona à camada "Tablado e Piso"
+        )
+
+        -- Verifica o tipo de piso selecionado
+        case radioFloorType.state of
+        (
+            1: -- MDF
+            (
+                local pisoMDF = plane width:width length:length isSelected:on
+                pisoMDF.position.z = -1
+                pisoMDF.layer = tabladoEPisoLayer -- Adiciona à camada "Tablado e Piso"
+                modPanel.addModToSelection (FloorGenerator ()) ui:on
+                $.modifiers[#FloorGenerator].width = 185
+                $.modifiers[#FloorGenerator].length = 275
+                $.modifiers[#FloorGenerator].MinRowOffset = 50
+                $.modifiers[#FloorGenerator].Bevel = 0.2
+            )
+
+            2: -- Carpete
+            (
+                local carpeteBox = box length:width width:length height:1 isSelected:on
+                carpeteBox.name = "Carpete"
+                carpeteBox.position.z = -1
+                carpeteBox.layer = tabladoEPisoLayer -- Adiciona à camada "Tablado e Piso"
+            )
+
+            3: -- Vinílico
+            (
+                local vinilicoBox = box length:width width:length height:1 isSelected:on
+                vinilicoBox.name = "Piso Vinílico"
+                vinilicoBox.position.z = -1
+                vinilicoBox.layer = tabladoEPisoLayer -- Adiciona à camada "Tablado e Piso"
+            )
+        )
+
+        -- Verifica se "Cantoneiras" está marcado
+        if chkCantoneiras.checked then
+        (
+            local cantoneiraRect = rectangle length:width width:length isSelected:on
+            cantoneiraRect.name = "Cantoneira"
+            cantoneiraRect.layer = tabladoEPisoLayer -- Adiciona à camada "Tablado e Piso"
+            
+            -- Aplica modificador Sweep ao retângulo
+            modPanel.addModToSelection (Sweep ()) ui:on
+            $.modifiers[#Sweep][#Bar_Section].length = 2
+            $.modifiers[#Sweep][#Bar_Section].width = 2
+            $.modifiers[#Sweep].CurrentBuiltInShape = 2
+        )
+    )
+)
+
+-- Cria uma janela com o rollout
+createDialog createStandRollout
